@@ -92,7 +92,9 @@ Content-Type: application/json
 
 ### Exercise 3.1 – 3.2: Deploy Agent Part 6 & So sánh `railway.toml` vs `render.yaml`
 
-- **URL public:** *[Đang chờ CP6 deploy]*
+- **URL public:** https://k5-l3a-day14-phamviethung-2a202603370.onrender.com (Render Docker Web Service + Render Key Value Redis `k5-day14-redis`, region Singapore).
+- **Kiểm tra 4 lệnh CP6:** `GET /health` → `200`, `GET /ready` → `200`, `POST /ask` không có key → `401`, `POST /ask` có `X-API-Key` → `200`.
+- **Ảnh minh chứng:** [`screenshots/dashboard.png`](screenshots/dashboard.png), [`screenshots/running.png`](screenshots/running.png), [`screenshots/test.png`](screenshots/test.png).
 - **So sánh `railway.toml` và `render.yaml`:**
   - `railway.toml` dùng định dạng **TOML**, tập trung cấu hình build/deploy cho **một service** (`[build] builder = "DOCKERFILE"`, `[deploy] healthcheckPath = "/health"`, `restartPolicyType`), còn biến môi trường và Redis add-on thường thiết lập qua Railway CLI (`railway variables set`) hoặc Dashboard.
   - `render.yaml` dùng định dạng **YAML (Blueprint / Infrastructure as Code)**, khai báo được **cả stack nhiều service** trong một file (`services:` gồm web service `type: web`, `runtime: docker`, `healthCheckPath: /health`, lẫn managed Redis/Key Value) và hỗ trợ khai báo biến môi trường an toàn ngay trong file (`generateValue: true` hoặc `sync: false` cho secret).
