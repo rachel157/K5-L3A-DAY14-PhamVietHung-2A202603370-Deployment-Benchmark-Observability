@@ -47,7 +47,44 @@ content-type: application/json
 
 ### Exercise 2.2 – 2.4: Build, kích thước image & Docker Compose stack
 
-> *[Đang chờ Docker Desktop bật trên máy để ghi kết quả `docker images` và output `curl http://localhost/health` thực tế]*
+- **Build & chạy container `develop`:**
+
+```http
+POST http://localhost:18000/ask?question=What%20is%20Docker
+HTTP/1.1 200 OK
+content-type: application/json
+
+{"answer":"Container là cách đóng gói app để chạy ở mọi nơi. Build once, run anywhere!"}
+```
+
+- **So sánh kích thước image (`docker images`):**
+  - `my-agent:develop` (single-stage `python:3.11`): **1.15 GB** (~1,150 MB)
+  - `my-agent:advanced` (multi-stage `python:3.11-slim`): **163 MB**
+  - **Chênh lệch:** giảm **~85.8%** dung lượng vì stage `runtime` chỉ copy `/root/.local` (các package đã cài) và code chạy, loại bỏ `gcc`, `libpq-dev`, cache build và base OS nặng.
+- **Sơ đồ kiến trúc stack `02-docker/production/docker-compose.yml`:**
+
+```text
+Client ──▶ Nginx (:80/:443) ──▶ Agent (:8000) ──▶ Redis (:6379)
+                                       └────────▶ Qdrant (:6333)
+```
+
+- **Kết quả test qua Nginx (`http://localhost/health` & `POST /ask`):**
+
+```http
+HTTP/1.1 200 OK
+Server: nginx
+Content-Type: application/json
+
+{"status":"ok","uptime_seconds":13.0,"version":"2.0.0","timestamp":"2026-11-25T13:46:16.896552"}
+```
+
+```http
+HTTP/1.1 200 OK
+Server: nginx
+Content-Type: application/json
+
+{"answer":"Agent đang hoạt động tốt! (mock response) Hỏi thêm câu hỏi đi nhé."}
+```
 
 ---
 
@@ -150,13 +187,48 @@ INFO:     Waiting for application shutdown.
 
 ### Exercise 5.3 – 5.5: Stateless + Redis + Nginx (`--scale agent=3`)
 
-> *[Đang chờ Docker Desktop bật trên máy để chạy `docker compose -p k5-day14-scaling up -d --build --scale agent=3` và `python test_stateless.py`]*
+Chạy `docker compose -p k5-day14-scaling up -d --build --scale agent=3` và `python test_stateless.py` (cổng `8080`, `POST /chat`):
+
+```text
+Total requests: 5
+Instances used: {'instance-2c8e12', 'instance-77ba74', 'instance-93c8f7'}
+✅ All requests served despite different instances!
+
+--- Conversation History ---
+Total messages: 10
+✅ Session history preserved across all instances via Redis!
+```
+
+Nginx điều phối round-robin qua 3 instance khác nhau nhưng lịch sử hội thoại 10 message vẫn đầy đủ vì toàn bộ session state lưu tập trung trong Redis thay vì RAM cục bộ của từng container.
 
 ---
 
 ## Part 6: Final Project (`06-lab-complete/`)
 
-> *[Đang triển khai code & chờ chạy `python check_production_ready.py` trong WSL2 khi Docker Desktop hoạt động]*
+Chạy `python check_production_ready.py` trong `Ubuntu-24.04` WSL2 (`posix`):
+
+```text
+================================================================
+  📋 Checklist Deliverable
+     ✅ Dockerfile (multi-stage, < 500 MB)
+     ✅ docker-compose.yml (agent + redis)
+     ✅ .dockerignore
+     ✅ Health check endpoint (GET /health)
+     ✅ Readiness endpoint (GET /ready)
+     ✅ API Key authentication
+     ✅ Rate limiting
+     ✅ Cost guard
+     ✅ Config từ environment variables
+     ✅ Structured logging
+     ✅ Graceful shutdown
+     ✅ Public URL ready (Railway / Render config)
+----------------------------------------------------------------
+  Result: 12/12 tiêu chí đạt · 42/42 checks passed
+  🎉 PASS 12/12 — PRODUCTION READY! Deploy nào!
+================================================================
+```
+
+- Image size đo được: **201 MB** (`docker stop`: exit code `0`, `0.8s`).
 
 ---
 
